@@ -64,7 +64,7 @@ export default function VerifyOtpScreen() {
         : await authApi.resendOtp({ email });
       setSeconds(RESEND_SECONDS);
       setCode("");
-      const hint = data.data?.otpHint ? `\nDevelopment code: ${data.data.otpHint}` : "";
+      const hint = data.data?.otpHint ? `\nTest code: ${data.data.otpHint}` : "";
       Alert.alert("Code sent", `Check your email for a new code.${hint}`);
     } catch (err) {
       Alert.alert("Could not resend", getErrorMessage(err));

@@ -10,6 +10,7 @@ import {
   Inter_700Bold,
 } from "@expo-google-fonts/inter";
 import { useAuthStore } from "../src/store/authStore";
+import { wakeServer } from "../src/services/api/client";
 import { colors } from "../src/theme/tokens";
 import { Loader } from "../src/components/ui/Loader";
 
@@ -26,6 +27,8 @@ export default function RootLayout() {
   });
 
   useEffect(() => {
+    // Start waking the API while the splash and login screens are shown.
+    void wakeServer();
     bootstrap();
   }, [bootstrap]);
 

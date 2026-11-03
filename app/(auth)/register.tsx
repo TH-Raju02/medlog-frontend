@@ -85,7 +85,7 @@ export default function RegisterScreen() {
       setLoading(true);
       const { confirmPassword: _confirm, ...payload } = parsed.data;
       const { data } = await authApi.register(payload);
-      if (data.data.otpHint) Alert.alert("Verification code", `Development code: ${data.data.otpHint}`);
+      if (data.data.otpHint) Alert.alert("Verification code", `Test code: ${data.data.otpHint}`);
       router.push({ pathname: "/(auth)/verify-otp", params: { email: parsed.data.email } });
     } catch (error) {
       Alert.alert("Registration failed", getErrorMessage(error));

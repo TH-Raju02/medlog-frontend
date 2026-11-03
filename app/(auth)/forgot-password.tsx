@@ -29,7 +29,7 @@ export default function ForgotPasswordScreen() {
       setError(undefined);
       setLoading(true);
       const { data } = await authApi.forgotPassword({ email: parsed.data });
-      if (data.data.otpHint) Alert.alert("Verification code", `Development code: ${data.data.otpHint}`);
+      if (data.data.otpHint) Alert.alert("Verification code", `Test code: ${data.data.otpHint}`);
       router.push({ pathname: "/(auth)/verify-otp", params: { email: parsed.data, mode: "reset" } });
     } catch (err) {
       setError(getErrorMessage(err));

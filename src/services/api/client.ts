@@ -30,10 +30,29 @@ export const tokenStorage = {
   },
 };
 
+// The API runs on Render's free plan, which sleeps when idle and takes up to about a minute to wake.
+const REQUEST_TIMEOUT_MS = 75000;
+
 export const api = axios.create({
   baseURL: API_URL,
-  timeout: 20000,
+  timeout: REQUEST_TIMEOUT_MS,
 });
+
+let waking: Promise<boolean> | null = null;
+
+/** Pings the API so a sleeping server starts booting; resolves false when it can't be reached. */
+export function wakeServer(): Promise<boolean> {
+  waking =
+    waking ??
+    axios
+      .get(`${API_URL}/health`, { timeout: REQUEST_TIMEOUT_MS })
+      .then(() => true)
+      .catch(() => false)
+      .finally(() => {
+        waking = null;
+      });
+  return waking;
+}
 
 api.interceptors.request.use(async (config: InternalAxiosRequestConfig) => {
   const token = await tokenStorage.getAccess();
@@ -62,7 +81,10 @@ async function refreshAccessToken(): Promise<string | null> {
 api.interceptors.response.use(
   (response) => response,
   async (error: AxiosError) => {
-    const original = error.config as InternalAxiosRequestConfig & { _retry?: boolean };
+    const original = error.config as InternalAxiosRequestConfig & {
+      _retry?: boolean;
+      _networkRetry?: boolean;
+    };
     if (error.response?.status === 401 && original && !original._retry) {
       original._retry = true;
       refreshing = refreshing ?? refreshAccessToken();
@@ -73,13 +95,24 @@ api.interceptors.response.use(
         return api(original);
       }
     }
+    // Only reads are retried: a write may already have reached the server.
+    const isRead = (original?.method ?? "get").toLowerCase() === "get";
+    if (!error.response && original && isRead && !original._networkRetry) {
+      original._networkRetry = true;
+      if (await wakeServer()) return api(original);
+    }
     return Promise.reject(error);
   }
 );
 
 export const getErrorMessage = (error: unknown, fallback = "Something went wrong") => {
   if (axios.isAxiosError(error)) {
-    return (error.response?.data as { message?: string })?.message || error.message || fallback;
+    if (!error.response) {
+      return error.code === "ECONNABORTED" || error.code === "ETIMEDOUT"
+        ? "The server is taking too long to respond. Please try again in a moment."
+        : "Can't reach the MedLog server. Check your internet connection and try again.";
+    }
+    return (error.response.data as { message?: string })?.message || error.message || fallback;
   }
   if (error instanceof Error) return error.message;
   return fallback;
